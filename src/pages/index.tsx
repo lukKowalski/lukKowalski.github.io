@@ -12,7 +12,7 @@ const Index = () => {
           🚀
         </span>{' '}
       </p>
-      <h2 className="font-semibold text-lg">Next js Boilerplate Features</h2>
+      <h2 className="font-semibold text-lg">Hey!</h2>
     </Main>
   );
 };

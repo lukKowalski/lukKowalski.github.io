@@ -46,7 +46,7 @@ body {
   }
   //top
   div:nth-child(3) {
-    transform: rotateX(90deg) translateZ($translate);
+    transform: rotateY(-90deg) rotateX(90deg) translateZ($translate);
   }
   //bottom
   div:nth-child(4) {
@@ -58,6 +58,6 @@ body {
   }
   //right
   div:nth-child(6) {
-    transform: rotateY(90deg) translateZ($translate);
+    transform: rotateX(270deg) rotateY(90deg) translateZ($translate);
   }
 }

@@ -33,8 +33,10 @@ body {
   div {
     position: absolute;
     backface-visibility: inherit;
+    opacity: 0.8;
     width: $size;
     height: $size;
+    box-shadow: 0 0 20px whitesmoke inset;
   }
 
   div:nth-child(1) {

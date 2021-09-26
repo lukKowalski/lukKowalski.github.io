@@ -22,4 +22,5 @@ a:hover {
 
 body {
   @apply text-black;
+  perspective: 2000px;
 }

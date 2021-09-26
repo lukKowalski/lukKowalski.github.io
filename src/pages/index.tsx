@@ -1,3 +1,7 @@
+import React from 'react';
+
+import { Cube } from 'Components/Cube';
+
 import { Meta } from '../layout/Meta';
 import { Main } from '../templates/Main';
 
@@ -6,41 +10,34 @@ const Index = () => {
     <Main
       meta={<Meta title="gh pages example" description="gh pages example" />}
     >
-      <div className="flex justify-center items-center h-screen">
-        <div className="flex flex-col justify-center h-screen">
-          <div className="flex justify-start items-center">
-            <div className="box bg-orange">
-              <div />
-              <div />
-              <div />
-              <div />
-              <div />
-              <div />
-            </div>
-            <div className="pl-10 text-5xl">Awesome</div>
-          </div>
-          <div className="flex justify-start items-center">
-            <div className="box bg-green">
-              <div />
-              <div />
-              <div />
-              <div />
-              <div />
-              <div />
-            </div>
-            <div className="pl-10 text-5xl">Github</div>
-          </div>
-          <div className="flex justify-start items-center">
-            <div className="box bg-purple">
-              <div />
-              <div />
-              <div />
-              <div />
-              <div />
-              <div />
-            </div>
-            <div className="pl-10 text-5xl">Pages</div>
-          </div>
+      <div className="flex justify-center items-center h-screen gap-x-8">
+        <div className="flex flex-col justify-center h-screen gap-y-4">
+          <Cube variant="purple"></Cube>
+          <Cube variant="orange"></Cube>
+          <Cube variant="green"></Cube>
+          <Cube variant="purple"></Cube>
+          <Cube variant="orange"></Cube>
+        </div>
+        <div className="flex flex-col justify-center h-screen gap-y-4">
+          <Cube variant="orange"></Cube>
+          <Cube variant="green"></Cube>
+          <Cube variant="purple"></Cube>
+          <Cube variant="orange"></Cube>
+          <Cube variant="purple"></Cube>
+        </div>
+        <div className="flex flex-col justify-center h-screen gap-y-4">
+          <Cube variant="purple"></Cube>
+          <Cube variant="orange"></Cube>
+          <Cube variant="green"></Cube>
+          <Cube variant="purple"></Cube>
+          <Cube variant="orange"></Cube>
+        </div>
+        <div className="flex flex-col justify-center h-screen gap-y-4">
+          <Cube variant="orange"></Cube>
+          <Cube variant="purple"></Cube>
+          <Cube variant="orange"></Cube>
+          <Cube variant="green"></Cube>
+          <Cube variant="purple"></Cube>
         </div>
       </div>
     </Main>

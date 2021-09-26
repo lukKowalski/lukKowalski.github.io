@@ -1,15 +1,11 @@
 $size: 80px;
 $translate: calc($size / 2);
 
-body {
-  perspective: 2000px;
-}
-
 .box {
   transform-style: preserve-3d;
   width: $size;
   height: $size;
-
+  
   &.bg-green {
     div {
       background: linear-gradient(45deg, rgba(58,180,120,1) 0%, rgba(95,253,29,1) 50%, rgba(252,176,69,1) 100%);
@@ -28,7 +24,6 @@ body {
     }
   }  
 
-  transform: rotate3d(1, 1, 1, 320deg);
   
   div {
     position: absolute;
@@ -36,7 +31,12 @@ body {
     opacity: 0.8;
     width: $size;
     height: $size;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     box-shadow: 0 0 20px whitesmoke inset;
+    font-size: 2em;
+    color: white
   }
 
   div:nth-child(1) {

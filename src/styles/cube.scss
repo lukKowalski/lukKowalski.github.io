@@ -8,19 +8,19 @@ $translate: calc($size / 2);
   
   &.bg-green {
     div {
-      background: linear-gradient(45deg, rgba(58,180,120,1) 0%, rgba(95,253,29,1) 50%, rgba(252,176,69,1) 100%);
+      background: linear-gradient(45deg, rgba(58,180,120,1) 0%, rgba(95,253,29,1) 50%, rgb(255, 228, 190) 100%);
     }
   }
 
   &.bg-orange {
     div {
-      background: linear-gradient(45deg, rgba(131,58,180,1) 0%, rgba(253,29,29,1) 50%, rgba(252,176,69,1) 100%);
+      background: linear-gradient(45deg, rgb(255, 251, 210) 0%, rgba(253,29,29,1) 50%, rgba(252,176,69,1) 100%);
     }
   }
 
   &.bg-purple {
     div {
-      background: linear-gradient(45deg, rgba(58,88,180,1) 0%, rgba(166,29,253,1) 50%, rgba(252,69,69,1) 100%);
+      background: linear-gradient(45deg, rgb(193, 208, 255) 0%, rgba(166,29,253,1) 50%, rgba(252,69,69,1) 100%);
     }
   }  
 
@@ -31,12 +31,7 @@ $translate: calc($size / 2);
     opacity: 0.8;
     width: $size;
     height: $size;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 0 20px whitesmoke inset;
-    font-size: 2em;
-    color: white
+    border: 1px solid #333;
   }
 
   div:nth-child(1) {

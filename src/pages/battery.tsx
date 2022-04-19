@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useEffect, useState } from 'react';
 
 import { Meta } from '../layout/Meta';
@@ -6,7 +7,7 @@ import { Main } from '../templates/Main';
 const Battery = () => {
   const [lvl, setLvl] = useState();
   const [charging, setCharging] = useState();
-  const update = (battery) => {
+  const update = (battery: any) => {
     console.log(battery);
     setCharging(battery.charging);
     setLvl(battery.level * 100);

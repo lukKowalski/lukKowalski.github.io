@@ -10,29 +10,29 @@ const Index = () => {
     <Main
       meta={<Meta title="gh pages example" description="gh pages example" />}
     >
-      <div className="flex justify-center items-center h-screen gap-x-8">
-        <div className="flex flex-col justify-center h-screen gap-y-4">
+      <div className="flex justify-center items-center gap-x-8 pt-10">
+        <div className="flex flex-col justify-center gap-y-4">
           <Cube variant="purple"></Cube>
           <Cube variant="orange"></Cube>
           <Cube variant="green"></Cube>
           <Cube variant="purple"></Cube>
           <Cube variant="orange"></Cube>
         </div>
-        <div className="flex flex-col justify-center h-screen gap-y-4">
+        <div className="flex flex-col justify-center gap-y-4">
           <Cube variant="orange"></Cube>
           <Cube variant="green"></Cube>
           <Cube variant="purple"></Cube>
           <Cube variant="orange"></Cube>
           <Cube variant="purple"></Cube>
         </div>
-        <div className="flex flex-col justify-center h-screen gap-y-4">
+        <div className="flex flex-col justify-center gap-y-4">
           <Cube variant="purple"></Cube>
           <Cube variant="orange"></Cube>
           <Cube variant="green"></Cube>
           <Cube variant="purple"></Cube>
           <Cube variant="orange"></Cube>
         </div>
-        <div className="flex flex-col justify-center h-screen gap-y-4">
+        <div className="flex flex-col justify-center gap-y-4">
           <Cube variant="orange"></Cube>
           <Cube variant="purple"></Cube>
           <Cube variant="orange"></Cube>

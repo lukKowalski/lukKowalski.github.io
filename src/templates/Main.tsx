@@ -6,7 +6,7 @@ type IMainProps = {
 };
 
 const Main = (props: IMainProps) => (
-  <div className="antialiased w-full h-screen text-black">
+  <div className="antialiased w-full text-black">
     {props.meta}
     {props.children}
   </div>

@@ -1241,86 +1241,6 @@ uiBtn('glb').onclick = () => {
   }, err => alert('Export failed: ' + err), { binary: true });
 };
 
-// ---------- floating 3D "Collect gold" button ----------
-// A gold plaque with a coin, held in the bottom-right corner of the screen (bottom centre and smaller on
-// portrait/mobile): each frame it's placed a fixed distance along the camera ray through that spot (BTN_MARGIN px
-// in), so it stays on screen for any camera or aspect. Bobs, glows, grows on hover and presses in on click.
-// Lives in the scene, not the exported model.
-const BTN_DIST = 3, BTN_W = 1.34, BTN_H = 0.34, BTN_SIZE = 0.4, BTN_MARGIN = 28; // size: fraction of the original
-const BTN_MOBILE_ASPECT = 0.8, BTN_MOBILE_WIDTH = 0.38; // below this aspect (portrait): centred, at most this share of the width
-const goldBtn = new THREE.Group(); goldBtn.name = 'CollectGoldButton'; scene.add(goldBtn);
-const goldBtnInner = new THREE.Group(); goldBtn.add(goldBtnInner); // bob / press / hover live here
-{
-  const gold = new THREE.MeshStandardMaterial({ color: 0xf0bd52, metalness: 0.35, roughness: 0.32, emissive: 0x6a4410, emissiveIntensity: 0.9 });
-  const rim = new THREE.MeshStandardMaterial({ color: 0x9a6418, metalness: 0.4, roughness: 0.45, emissive: 0x3a2206, emissiveIntensity: 0.8 });
-  const r = BTN_H / 2, w = BTN_W / 2, shape = new THREE.Shape();
-  shape.moveTo(-w + r, -r); shape.lineTo(w - r, -r); shape.absarc(w - r, 0, r, -Math.PI / 2, Math.PI / 2);
-  shape.lineTo(-w + r, r); shape.absarc(-w + r, 0, r, Math.PI / 2, Math.PI * 1.5);
-  const plaqueGeo = new THREE.ExtrudeGeometry(shape, { depth: 0.08, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.025, bevelSegments: 3, curveSegments: 24 });
-  plaqueGeo.translate(0, 0, -0.08);
-  goldBtnInner.add(new THREE.Mesh(plaqueGeo, [gold, rim]));
-  // label fitted into the space right of the coin (canvas x from TEXT_X0 to TEXT_X1 of 1024)
-  const label = canvasTex(1024, 256, (g, cw, ch) => {
-    const TEXT_X0 = 290, TEXT_X1 = 950, text = 'COLLECT GOLD';
-    let px = 92; g.font = `bold ${px}px Georgia, "Times New Roman", serif`;
-    const fit = (TEXT_X1 - TEXT_X0) / g.measureText(text).width;
-    if (fit < 1) { px = Math.floor(px * fit); g.font = `bold ${px}px Georgia, "Times New Roman", serif`; }
-    g.textAlign = 'center'; g.textBaseline = 'middle';
-    const x = (TEXT_X0 + TEXT_X1) / 2;
-    g.fillStyle = 'rgba(255,244,200,.85)'; g.fillText(text, x, ch / 2 + 5);  // highlight
-    g.fillStyle = '#4a2a06'; g.fillText(text, x, ch / 2);
-  });
-  const face = new THREE.Mesh(new THREE.PlaneGeometry(BTN_W, BTN_W / 4), new THREE.MeshBasicMaterial({ map: label, transparent: true, depthWrite: false }));
-  face.position.z = 0.032; goldBtnInner.add(face);
-  // flat coin on the left, almost flush with the plaque face (so perspective can't slide it over the text);
-  // tilts slightly and spins round in its own plane when pressed
-  const coinFace = canvasTex(256, 256, (g, cw) => {
-    const c = cw / 2, grd = g.createRadialGradient(c * 0.75, c * 0.7, 10, c, c, c);
-    grd.addColorStop(0, '#fff3b8'); grd.addColorStop(0.45, '#f2c64e'); grd.addColorStop(1, '#a8701a');
-    g.fillStyle = grd; g.beginPath(); g.arc(c, c, c, 0, 7); g.fill();
-    g.lineWidth = 14; g.strokeStyle = '#8a5a12'; g.beginPath(); g.arc(c, c, c - 9, 0, 7); g.stroke();       // rim
-    g.lineWidth = 4; g.strokeStyle = 'rgba(255,240,180,.8)'; g.beginPath(); g.arc(c, c, c - 20, 0, 7); g.stroke();
-    g.fillStyle = '#9a6414';
-    for (let i = 0; i < 28; i++) { const a = i / 28 * Math.PI * 2; g.beginPath(); g.arc(c + Math.cos(a) * (c - 34), c + Math.sin(a) * (c - 34), 4, 0, 7); g.fill(); } // beads
-    const star = (rad, dx, dy, col) => { g.fillStyle = col; g.beginPath();
-      for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? rad * 0.45 : rad; g.lineTo(c + dx + Math.cos(a) * rr, c + dy + Math.sin(a) * rr); }
-      g.closePath(); g.fill(); };
-    star(62, 3, 4, '#8a5a12'); star(62, 0, 0, '#ffe58a'); star(40, 0, 0, '#e8b23c');   // embossed star
-  });
-  const coinMat = new THREE.MeshStandardMaterial({ map: coinFace, emissiveMap: coinFace, emissive: 0xffffff, emissiveIntensity: 0.35, metalness: 0.3, roughness: 0.35 });
-  const coin = new THREE.Group(); coin.position.set(-w + r, 0, 0.06); goldBtnInner.add(coin);
-  const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.135, 0.135, 0.012, 40), [rim, coinMat, coinMat]);
-  disc.rotation.x = Math.PI / 2; coin.add(disc);
-  goldBtn.userData.coin = coin;
-  goldBtn.traverse(o => { o.renderOrder = 10; });
-}
-const _bp = new THREE.Vector3(), _bd = new THREE.Vector3();
-let btnHover = false, btnHoverK = 0, btnPress = 0;
-function updateGoldButton(t, dt) {
-  // view size at the button's distance
-  const viewH = 2 * BTN_DIST * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2), viewW = viewH * camera.aspect;
-  const mobile = camera.aspect < BTN_MOBILE_ASPECT;
-  const size = mobile ? Math.min(BTN_SIZE, viewW * BTN_MOBILE_WIDTH / BTN_W) : BTN_SIZE;
-  // bottom-right corner (bottom centre on mobile), BTN_MARGIN px in — screen coordinates, so the lens shift is fine
-  const ndcX = mobile ? 0 : 1 - BTN_W * size / viewW - BTN_MARGIN / innerWidth * 2;
-  const ndcY = -1 + (BTN_H + 0.06) * size / viewH + BTN_MARGIN / innerHeight * 2;
-  _bp.set(ndcX, ndcY, 0.5).unproject(camera);
-  _bd.copy(_bp).sub(camera.position).normalize();
-  goldBtn.position.copy(camera.position).addScaledVector(_bd, BTN_DIST);
-  goldBtn.quaternion.copy(camera.quaternion);
-  btnHoverK += ((btnHover ? 1 : 0) - btnHoverK) * (1 - Math.exp(-dt * 12));
-  btnPress = Math.max(btnPress - dt * 5, 0);
-  const press = Math.sin(btnPress * Math.PI);
-  goldBtn.scale.setScalar(size * (1 + 0.07 * btnHoverK - 0.07 * press));
-  goldBtnInner.position.set(0, Math.sin(t * 2.2) * 0.04, -0.06 * press);
-  goldBtnInner.rotation.set(Math.sin(t * 1.3) * 0.06, Math.sin(t * 0.9) * 0.1, Math.sin(t * 1.7) * 0.02);
-  // small tilt (stays clear of the plaque); one full in-plane turn after each press
-  const coinObj = goldBtn.userData.coin;
-  coinObj.rotation.y = Math.sin(t * 1.8) * 0.1;
-  coinObj.rotation.z = -(1 - btnPress) * (btnPress > 0 ? Math.PI * 2 : 0);
-}
-const hitsGoldButton = () => raycaster.intersectObject(goldBtn, true).length > 0;
-
 // ---------- click-to-spin wheel + sound ----------
 // Clicking the wheel adds angular velocity on top of the water drive; friction bleeds it off.
 // While the extra spin lasts, Pickup77.wav ticks once per spoke passing, so the tick rate
@@ -1359,12 +1279,9 @@ renderer.domElement.addEventListener('pointerdown', e => { downAt = [e.clientX, 
 renderer.domElement.addEventListener('pointerup', async e => {
   const isClick = downAt && Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) < 6;
   downAt = null;
-  if (!isClick) return;
-  aimAt(e);
-  if (hitsGoldButton()) { btnPress = 1; spinWheel(); return; }
-  if (hitsWheel(e)) spinWheel();
+  if (isClick && hitsWheel(e)) spinWheel();
 });
-// one push on the wheel — shared by clicking the wheel, the 3D "Collect gold" button and the spacebar
+// one push on the wheel — shared by clicking the wheel and the spacebar
 async function spinWheel() {
   await ensureAudio();
   if (audioCtx.state === 'suspended') await audioCtx.resume();
@@ -1376,14 +1293,11 @@ addEventListener('keydown', e => {
   if (e.code !== 'Space' || e.repeat) return;
   if (e.target.closest('input, textarea, select, button')) return; // typing, or a focused button handles space itself
   e.preventDefault();
-  btnPress = 1;
   spinWheel();
 });
 renderer.domElement.addEventListener('pointermove', e => {
   if (e.buttons) return;
-  aimAt(e);
-  btnHover = hitsGoldButton();
-  renderer.domElement.style.cursor = btnHover || hitsWheel(e) ? 'pointer' : '';
+  renderer.domElement.style.cursor = hitsWheel(e) ? 'pointer' : '';
 });
 
 function updateSpin(dt) {
@@ -1651,7 +1565,6 @@ renderer.setAnimationLoop(() => {
   updateViewTween(dt);
   syncDevCam();
   controls.update();
-  updateGoldButton(clock.elapsedTime, dt);
   renderer.render(scene, camera);
 });
 </script>

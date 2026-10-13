@@ -26,7 +26,6 @@
   #loader .bar { height:10px; border:1px solid var(--edge); border-radius:6px; background:var(--panel); overflow:hidden; }
   #loader .bar i { display:block; height:100%; width:0; background:var(--accent); transition:width .3s; }
   #loader p { margin:12px 0 0; font-size:14px; opacity:.8; min-height:1.2em; }
-  #loader button { margin-top:18px; font-size:16px; padding:10px 22px; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -40,7 +39,6 @@
   <h1>Mill clicker 3000</h1>
   <div class="bar"><i id="loadBar"></i></div>
   <p id="loadText">Loading sounds…</p>
-  <button id="enter" hidden>Click to start</button>
 </div></div>
 <script type="module">
 import * as THREE from 'three';
@@ -1362,7 +1360,7 @@ function stopTrackAfterFade(which) {
     if (which === 'day') { daySrc?.stop(); daySrc = null; } else { musicSrc?.stop(); musicSrc = null; }
   }, 3000);
 }
-// loading screen: progress over the three sounds, then "Click to start" (the gesture that unlocks audio)
+// loading screen: progress over the three sounds, then it fades away by itself
 const LOAD_TOTAL = 3; let loaded = 0;
 function loadStep() {
   loaded++;
@@ -1375,12 +1373,10 @@ loadMusic().then(() => {
   stageLights.forEach(L => { L.root.visible = true; });
   renderer.compile(scene, camera);
   stageLights.forEach(L => { L.root.visible = false; });
-  const enter = document.getElementById('enter');
-  enter.hidden = false; enter.focus();
-  enter.onclick = async () => {
-    await audioCtx.resume();
-    document.getElementById('loader').classList.add('gone');
-  };
+  document.getElementById('loader').classList.add('gone');
+  // browsers only allow sound after a user gesture: unlock it on the first click/tap/key anywhere
+  const unlock = () => { audioCtx.resume(); for (const t of ['pointerdown', 'keydown']) removeEventListener(t, unlock, true); };
+  for (const t of ['pointerdown', 'keydown']) addEventListener(t, unlock, true);
 }, err => { document.getElementById('loadText').textContent = 'Could not load sounds: ' + err.message; });
 // day/night switch: the incoming track starts from the beginning; returns false while the music isn't
 // decoded yet, so the caller retries next frame

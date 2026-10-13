@@ -11,6 +11,13 @@
   #ui { position:fixed; left:16px; bottom:16px; display:flex; gap:8px; flex-wrap:wrap; }
   button { background:var(--panel); color:var(--fg); border:1px solid var(--edge); border-radius:6px; padding:8px 12px; font:inherit; font-size:14px; cursor:pointer; }
   button:hover { border-color:var(--accent); color:#fff; }
+  #devcam { position:fixed; right:16px; top:16px; z-index:5; width:250px; background:var(--panel); border:1px solid var(--edge); border-radius:6px; padding:10px 12px; font-size:12px; display:grid; gap:6px; }
+  #devcam b { color:var(--accent); font-weight:normal; font-size:14px; }
+  #devcam label { display:grid; grid-template-columns:62px repeat(3, 1fr); gap:4px; align-items:center; }
+  #devcam label:has(input[type=range]) { grid-template-columns:62px 1fr 34px; }
+  #devcam input[type=number] { width:100%; box-sizing:border-box; background:#1a1512; color:var(--fg); border:1px solid var(--edge); border-radius:4px; padding:2px 4px; font:inherit; }
+  #devcam .row { display:flex; gap:6px; } #devcam .row button { flex:1; padding:6px 8px; font-size:12px; }
+  #devcam small { opacity:.75; min-height:1.2em; }
   #loader { position:fixed; inset:0; z-index:10; display:flex; align-items:center; justify-content:center; padding:16px;
     background:radial-gradient(ellipse at center, #2a2119 0%, #121010 75%); transition:opacity .6s; }
   #loader.gone { opacity:0; pointer-events:none; }
@@ -54,29 +61,37 @@ document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x1d1d1f);
 
-const camera = new THREE.PerspectiveCamera(46, innerWidth / innerHeight, 0.1, 220);
-camera.position.set(-11.6, 7.7, 11.45);
-// Lens shift: slide the frame up by VIEW_SHIFT of the screen height so the scene sits lower on screen
+// Default camera. camera.json is the source of truth: the dev page loads it at startup, the dev Camera panel
+// saves it (through dev_server.py), and build.py bakes it into the published page in place of the inline copy.
+const CAMERA_PRESET_INLINE = {"position": [-11.37, 7.64, 11.72], "target": [0.3, 1.7, 0.0], "fov": 46.0, "viewShift": 0.16};
+const CAMERA_FROM_FILE = false; // build.py turns this off (the preset is baked in)
+const CAMERA_PRESET = !CAMERA_FROM_FILE ? CAMERA_PRESET_INLINE : await (async () => {
+  try { const r = await fetch('camera.json', { cache: 'no-store' }); if (r.ok) return { ...CAMERA_PRESET_INLINE, ...await r.json() }; } catch {}
+  return CAMERA_PRESET_INLINE;
+})();
+const camera = new THREE.PerspectiveCamera(CAMERA_PRESET.fov, innerWidth / innerHeight, 0.1, 220);
+camera.position.fromArray(CAMERA_PRESET.position);
+// Lens shift: slide the frame up by viewShift of the screen height so the scene sits lower on screen
 // while the camera keeps its top-down angle (a band of sky stays visible above the hills).
-const VIEW_SHIFT = 0.12;
+let viewShift = CAMERA_PRESET.viewShift;
 function applyViewOffset() {
   camera.aspect = innerWidth / innerHeight;
-  camera.setViewOffset(innerWidth, innerHeight, 0, -innerHeight * VIEW_SHIFT, innerWidth, innerHeight);
+  camera.setViewOffset(innerWidth, innerHeight, 0, -innerHeight * viewShift, innerWidth, innerHeight);
 }
 applyViewOffset();
 const CAMERA_CONTROLS = false; // build.py turns this off for the published page (fixed camera)
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enabled = CAMERA_CONTROLS;
-controls.target.set(0.3, 1.0, 0.0);
+controls.target.fromArray(CAMERA_PRESET.target);
 controls.enableDamping = true;
 controls.maxPolarAngle = Math.PI * 0.49;
 controls.minDistance = 6; controls.maxDistance = 45;
 controls.autoRotateSpeed = 0.8;
 // the view the page opens with; the "Default view" button glides back to it
-const DEFAULT_VIEW = { pos: camera.position.clone(), target: controls.target.clone() };
+const DEFAULT_VIEW = { pos: camera.position.clone(), target: controls.target.clone(), fov: camera.fov, shift: viewShift };
 let viewTween = null;
 function goDefaultView() {
-  viewTween = { t: 0, fromPos: camera.position.clone(), fromTarget: controls.target.clone() };
+  viewTween = { t: 0, fromPos: camera.position.clone(), fromTarget: controls.target.clone(), fromFov: camera.fov, fromShift: viewShift };
 }
 function updateViewTween(dt) {
   if (!viewTween) return;
@@ -84,6 +99,9 @@ function updateViewTween(dt) {
   const k = viewTween.t * viewTween.t * (3 - 2 * viewTween.t);
   camera.position.lerpVectors(viewTween.fromPos, DEFAULT_VIEW.pos, k);
   controls.target.lerpVectors(viewTween.fromTarget, DEFAULT_VIEW.target, k);
+  camera.fov = THREE.MathUtils.lerp(viewTween.fromFov, DEFAULT_VIEW.fov, k);
+  viewShift = THREE.MathUtils.lerp(viewTween.fromShift, DEFAULT_VIEW.shift, k);
+  applyViewOffset();
   if (viewTween.t === 1) viewTween = null;
 }
 controls.addEventListener('start', () => { viewTween = null; }); // grabbing the view cancels the glide
@@ -1177,13 +1195,16 @@ const skySprite = (map, size) => {
 };
 const sunSprite = skySprite(sunTex, 14), moonSprite = skySprite(moonTex, 12);
 
-// wheel axis = default view direction; the sun's spot = upper right of the default frame
-const skyAxis = controls.target.clone().sub(camera.position).normalize();
-const skyRight = new THREE.Vector3().crossVectors(skyAxis, UP).normalize();
-const skyUp = new THREE.Vector3().crossVectors(skyRight, skyAxis);
-// sun's spot: a little right of the default view direction, just above the horizon
-const sunAz = Math.atan2(skyAxis.z, skyAxis.x) + 0.3, sunEl = 0.05;
-const sunSpot = V(Math.cos(sunAz) * Math.cos(sunEl), Math.sin(sunEl), Math.sin(sunAz) * Math.cos(sunEl)).multiplyScalar(75);
+// wheel axis = default view direction; the sun's spot = a little right of it, just above the horizon.
+// Recomputed when the dev Camera panel saves a new default.
+const skyAxis = new THREE.Vector3(), sunSpot = new THREE.Vector3(), sunEl = 0.05;
+let sunAz = 0;
+function placeSky(pos, target) {
+  skyAxis.copy(target).sub(pos).normalize();
+  sunAz = Math.atan2(skyAxis.z, skyAxis.x) + 0.3;
+  sunSpot.set(Math.cos(sunAz) * Math.cos(sunEl), Math.sin(sunEl), Math.sin(sunAz) * Math.cos(sunEl)).multiplyScalar(75);
+}
+placeSky(camera.position, controls.target);
 const _skyQ = new THREE.Quaternion();
 function updateSky(t, n) {
   skyG.position.copy(camera.position);
@@ -1444,6 +1465,48 @@ function updateParty(t, dt) {
   });
 }
 
+// ---------- dev Camera panel (stripped from the published build) ----------
+// Live readout of the camera; edit by orbiting/zooming or typing. "Save as default" writes camera.json through
+// dev_server.py, which the dev page loads at startup and build.py bakes into the published page.
+let syncDevCam = () => {};
+const devcam = document.getElementById('devcam');
+if (devcam) {
+  const fieldOf = { px: [camera.position, 'x'], py: [camera.position, 'y'], pz: [camera.position, 'z'],
+                    tx: [controls.target, 'x'], ty: [controls.target, 'y'], tz: [controls.target, 'z'] };
+  const el = k => devcam.querySelector(`[data-k="${k}"]`), out = k => devcam.querySelector(`[data-o="${k}"]`);
+  const msg = t => { document.getElementById('camMsg').textContent = t; };
+  const preset = () => ({ position: camera.position.toArray().map(v => +v.toFixed(2)), target: controls.target.toArray().map(v => +v.toFixed(2)),
+                          fov: Math.round(camera.fov), viewShift: +viewShift.toFixed(2) });
+  syncDevCam = () => {
+    for (const [k, [obj, axis]] of Object.entries(fieldOf)) if (document.activeElement !== el(k)) el(k).value = obj[axis].toFixed(2);
+    if (document.activeElement !== el('fov')) el('fov').value = camera.fov;
+    if (document.activeElement !== el('shift')) el('shift').value = viewShift;
+    out('fov').textContent = Math.round(camera.fov); out('shift').textContent = viewShift.toFixed(2);
+  };
+  devcam.addEventListener('input', e => {
+    const k = e.target.dataset.k, v = parseFloat(e.target.value);
+    if (!k || Number.isNaN(v)) return;
+    viewTween = null;
+    if (fieldOf[k]) { const [obj, axis] = fieldOf[k]; obj[axis] = v; }
+    if (k === 'fov') camera.fov = v;
+    if (k === 'shift') viewShift = v;
+    applyViewOffset();
+  });
+  document.getElementById('camCopy').onclick = async () => {
+    try { await navigator.clipboard.writeText(JSON.stringify(preset())); msg('Copied camera settings.'); } catch { msg(JSON.stringify(preset())); }
+  };
+  document.getElementById('camSave').onclick = async () => {
+    const p = preset();
+    try {
+      const r = await fetch('camera.json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) });
+      if (!r.ok) throw new Error(r.status);
+      Object.assign(DEFAULT_VIEW, { fov: p.fov, shift: p.viewShift }); DEFAULT_VIEW.pos.fromArray(p.position); DEFAULT_VIEW.target.fromArray(p.target);
+      placeSky(DEFAULT_VIEW.pos, DEFAULT_VIEW.target);
+      msg('Saved to camera.json — run build.py to publish it.');
+    } catch { msg('Could not save: run the page through dev_server.py.'); }
+  };
+}
+
 addEventListener('resize', () => {
   applyViewOffset();
   renderer.setSize(innerWidth, innerHeight);
@@ -1474,6 +1537,7 @@ renderer.setAnimationLoop(() => {
     pGeo.attributes.position.needsUpdate = true;
   }
   updateViewTween(dt);
+  syncDevCam();
   controls.update();
   renderer.render(scene, camera);
 });

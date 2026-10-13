@@ -1322,6 +1322,10 @@ function loadStep() {
 }
 loadStep.pass = v => { loadStep(); return v; };
 loadMusic().then(() => {
+  // compile every shader now (stage-light fixtures are hidden until the first party) so nothing stalls later
+  stageLights.forEach(L => { L.root.visible = true; });
+  renderer.compile(scene, camera);
+  stageLights.forEach(L => { L.root.visible = false; });
   const enter = document.getElementById('enter');
   enter.hidden = false; enter.focus();
   enter.onclick = async () => {
@@ -1387,7 +1391,9 @@ function makeStageLight(bushGroup, color, heroIdx, { angle = 0.3, solid = false 
   const beam = new THREE.Mesh(beamGeo, beamMat); beam.position.z = 0.18; head.add(beam);
   const spot = new THREE.SpotLight(color, 0, 14, angle, 0.5, 1.2);
   spot.position.z = 0.2; spot.castShadow = true; spot.shadow.mapSize.set(512, 512); spot.shadow.bias = -0.002;
-  head.add(spot); model.add(spot.target);
+  // the light itself stays outside the (hidden-by-day) fixture so the scene's light count never changes —
+  // otherwise every lit material recompiles the first time the lights appear
+  model.add(spot); model.add(spot.target);
   return { root, yoke, head, spot, beam, lensMat, beamMat, bush: bushGroup, hero: heroIdx === null ? null : heroes[heroIdx], solid, color: new THREE.Color(color), sweep: rand() * 6 };
 }
 const findBush = (x, z) => bushes.find(g => g.position.x === x && g.position.z === z);
@@ -1426,6 +1432,9 @@ function updateParty(t, dt) {
     L.yoke.rotation.y = Math.atan2(dx, dz);
     L.head.rotation.x = -Math.atan2(dy, Math.hypot(dx, dz));
     L.spot.target.position.copy(_aim);
+    L.root.updateWorldMatrix(true, true);
+    L.spot.position.set(0, 0, 0.2).applyMatrix4(L.head.matrixWorld);
+    L.spot.shadow.autoUpdate = s > 0.01; // no shadow passes while dark
     L.beam.scale.set(1, 1, Math.hypot(dx, dy, dz) / BEAM_LEN);
     // flicker: overall bass level + a strong hit on "its" beat (the three lights take turns)
     const flick = L.solid ? 0.8 : 0.25 + 0.5 * bass + (beatIdx % 3 === i ? 0.9 : 0.2) * pulse;
